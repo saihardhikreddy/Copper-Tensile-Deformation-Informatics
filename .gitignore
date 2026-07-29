@@ -1,0 +1,12 @@
+# LAMMPS output files (if generated later)
+*.dump
+*.lammpstrj
+log.lammps
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
