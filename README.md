@@ -18,6 +18,23 @@ This repository contains a fully automated computational framework designed to s
 * **Thermal Softening Verifications:** The quantitative data proves a stark reduction in maximum yield strength as the environment shifts from 300K to 900K.
 * **Mechanism Identification:** Visually verified that elevated thermal energy acts as a direct kinetic catalyst, drastically lowering the energy barrier required for dislocation nucleation and forcing the crystal lattice to fail at significantly lower structural loads.
 
+---
+
+## ⚙️ Requirements & Simulation Reproduction
+
+### Prerequisites
+* **LAMMPS**: Stable Release (v2023 or newer) compiled with `MANYBODY` package (for EAM potential support).
+* **OVITO**: OVITO Basic or Pro (v3.10+) for DXA dislocation mapping and structural visualization.
+
+### Running the MD Simulation
+To reproduce the molecular dynamics tensile loading simulation:
+```bash
+lmp -in in.cu_tensile.txt
+```
+To visualize dislocation dynamics and compute stacking fault density, load the resulting `.lammpstrj` or dump files directly into OVITO and apply the **Dislocation Analysis (DXA)** modifier.
+
+---
+
 ## Visual & Quantitative Analytics
 
 ### Microscopic Defect Evolution (OVITO Parametric Thermal Sweep)
