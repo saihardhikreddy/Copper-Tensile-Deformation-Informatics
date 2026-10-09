@@ -33,6 +33,12 @@ lmp -in in.cu_tensile.txt
 ```
 To visualize dislocation dynamics and compute stacking fault density, load the resulting `.lammpstrj` or dump files directly into OVITO and apply the **Dislocation Analysis (DXA)** modifier.
 
+### Automated Stress-Strain Curve Generation
+To process the raw output dumps (`stress_strain_*.txt`) and generate the comparative curve plot automatically:
+```bash
+python plot_stress_strain.py
+```
+
 ---
 
 ## Visual & Quantitative Analytics
