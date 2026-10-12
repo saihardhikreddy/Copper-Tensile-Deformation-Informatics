@@ -3,6 +3,16 @@
 *.lammpstrj
 log.lammps
 
+# Python & Environment
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Generated Plot Outputs
+stress_strain_comparison.png
+
 # OS files
 .DS_Store
 Thumbs.db
@@ -10,3 +20,4 @@ Thumbs.db
 # IDE files
 .vscode/
 .idea/
+
