@@ -1,27 +1,24 @@
-# -------------------------------------------------------------------
-# LAMMPS Script: Copper Tensile Deformation (FCC)
-# Designed for Materials Informatics Project Review
-# -------------------------------------------------------------------
+# LAMMPS Input Script for Tensile Deformation of Copper
+# Written by: Sai Hardhik Reddy
 
 # 1. INITIALIZATION
-clear
 units           metal
 dimension       3
 boundary        p p p
 atom_style      atomic
 
-# 2. ATOM DEFINITION (Create a 10x10x10 Copper block)
+# 2. ATOM DEFINITION
 lattice         fcc 3.615
-region          box block 0 10 0 10 0 10
-create_box      1 box
+region          simbox block 0 10 0 10 0 20
+create_box      1 simbox
 create_atoms    1 box
 
-# 3. INTERATOMIC POTENTIAL (EAM for Copper)
+# 3. FORCE FIELD
 pair_style      eam/alloy
 # NOTE: You must have a Cu EAM file in your folder for this to work!
 pair_coeff      * * Cu01.eam.alloy Cu
 
-# 4. EQUILIBRATION (Relax the box at 600K)
+# 4. EQUILIBRATION (Relax the box at 900K)
 velocity        all create 900.0 12345 dist gaussian
 fix             1 all npt temp 900.0 900.0 0.1 iso 0.0 0.0 1.0
 thermo          1000
@@ -29,15 +26,16 @@ run             5000
 unfix           1
 
 # 5. SETUP DEFORMATION VARIABLES
-# Store initial length in Z direction
-variable        L0 equal lz
+# Store initial length in Z direction as a static constant
+variable        tmp equal lz
+variable        L0 equal ${tmp}
 # Calculate Engineering Strain: (L - L0) / L0
 variable        strain equal "(lz - v_L0)/v_L0"
 # Calculate Stress in Z direction (Convert from bar to GPa)
 variable        stress_GPa equal "-pzz/10000"
 
 # 6. DEFORMATION PROCESS
-# Keep X and Y pressure at 0, hold Temp at 300K
+# Keep X and Y pressure at 0, hold Temp at 900K
 fix             1 all npt temp 900.0 900.0 0.1 x 0.0 0.0 1.0 y 0.0 0.0 1.0
 # Stretch the box in Z direction at a constant rate
 fix             2 all deform 1 z erate 0.01 units box remap x
