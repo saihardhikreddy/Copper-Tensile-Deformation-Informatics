@@ -6,7 +6,7 @@ This repository contains a fully automated computational framework designed to s
 * **Molecular Dynamics Engine:** LAMMPS (utilizing NPT ensembles and a 1 fs timestep)
 * **Interatomic Potential:** NIST-validated Mishin EAM Copper Potential (`Cu01.eam.alloy`)
 * **Visual Analytics:** OVITO (Dislocation Extraction Algorithm [DXA] & Virial Stress Mapping)
-* **Data Processing:** Excel Automated Feature Extraction
+* **Data Processing:** Excel & Python Automated Feature Extraction (`plot_stress_strain.py`)
 
 ## Project Workflow & Methodology
 1. **Simulation Execution:** Applied a uniform tensile deformation rate of 10^9 s^-1 along the Z-axis of a pristine FCC Copper lattice.
@@ -15,7 +15,14 @@ This repository contains a fully automated computational framework designed to s
 4. **Macroscopic Engineering Graphs:** Extracted automated text dumps to plot smooth True Stress vs. Engineering Strain curves, highlighting the onset of structural yield limits.
 
 ## Key Insights & Scientific Conclusions
-* **Thermal Softening Verifications:** The quantitative data proves a stark reduction in maximum yield strength as the environment shifts from 300K to 900K.
+
+| Temperature (K) | Young's Modulus $E$ (GPa) | Peak Yield / UTS (GPa) | Failure Strain ($\varepsilon_f$) | Dominant Failure Mode |
+| :--- | :--- | :--- | :--- | :--- |
+| **300 K** (Ambient) | **74.97** | **8.24** | ~0.118 | Elastic resilience followed by discrete Shockley partial nucleation |
+| **600 K** (Intermediate) | **68.74** | **6.41** | ~0.098 | Accelerated stacking fault propagation and twin boundary formation |
+| **900 K** (Extreme) | **55.15** | **4.35** | ~0.076 | Severe thermal softening and rapid amorphization at lattice shear planes |
+
+* **Thermal Softening Verifications:** The quantitative data proves a stark reduction in maximum yield strength and ~26.4% degradation in Young's Modulus as the environment shifts from 300K to 900K.
 * **Mechanism Identification:** Visually verified that elevated thermal energy acts as a direct kinetic catalyst, drastically lowering the energy barrier required for dislocation nucleation and forcing the crystal lattice to fail at significantly lower structural loads.
 
 ---
