@@ -7,11 +7,14 @@ and generates publication-quality comparative plots.
 """
 
 import os
+from typing import Dict, Any, Tuple
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
 
-def load_stress_strain(filepath):
+def load_stress_strain(filepath: str) -> Tuple[np.ndarray, np.ndarray]:
     """Load strain and stress (GPa) from LAMMPS print output."""
     strains = []
     stresses = []
@@ -27,7 +30,7 @@ def load_stress_strain(filepath):
                     stresses.append(float(parts[1]))
                 except ValueError:
                     continue
-    
+
     strains = np.array(strains)
     stresses = np.array(stresses)
 
@@ -40,7 +43,8 @@ def load_stress_strain(filepath):
     return strains, stresses
 
 
-def analyze_and_plot():
+def analyze_and_plot(save_plot: bool = True) -> Dict[str, Any]:
+    """Run tensile analysis across thermal sweep and optionally save comparison figure."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
     datasets = [
         {"temp": "300K", "file": "stress_strain_300K.txt", "color": "#1f77b4"},
@@ -48,7 +52,8 @@ def analyze_and_plot():
         {"temp": "900K", "file": "stress_strain_900K.txt", "color": "#d62728"},
     ]
 
-    plt.figure(figsize=(10, 6), dpi=300)
+    metrics: Dict[str, Any] = {}
+    fig = plt.figure(figsize=(10, 6), dpi=300)
 
     print("--- Tensile Deformation Analytics Summary ---")
     for item in datasets:
@@ -62,19 +67,26 @@ def analyze_and_plot():
             continue
 
         # Extract peak tensile strength (UTS)
-        max_idx = np.argmax(stress)
-        uts = stress[max_idx]
-        uts_strain = strain[max_idx]
+        max_idx = int(np.argmax(stress))
+        uts = float(stress[max_idx])
+        uts_strain = float(strain[max_idx])
 
         # Calculate Young's Modulus (E) in the initial linear elastic regime (0.01 <= strain <= 0.04)
         elastic_mask = (strain >= 0.01) & (strain <= 0.04)
+        slope = None
         if np.sum(elastic_mask) > 2:
-            slope = np.polyfit(strain[elastic_mask], stress[elastic_mask], 1)[0]
+            slope = float(np.polyfit(strain[elastic_mask], stress[elastic_mask], 1)[0])
             print(f"[{item['temp']}] UTS: {uts:.2f} GPa (at strain {uts_strain:.3f}) | Young's Modulus (E): {slope:.2f} GPa")
             label_text = f"{item['temp']} (UTS: {uts:.2f} GPa, E: {slope:.1f} GPa)"
         else:
             print(f"[{item['temp']}] UTS: {uts:.2f} GPa (at strain {uts_strain:.3f})")
             label_text = f"{item['temp']} (UTS: {uts:.2f} GPa)"
+
+        metrics[item["temp"]] = {
+            "uts": uts,
+            "uts_strain": uts_strain,
+            "youngs_modulus": slope,
+        }
 
         plt.plot(strain, stress, label=label_text, color=item["color"], linewidth=2)
         plt.scatter([uts_strain], [uts], color=item["color"], s=60, zorder=5)
@@ -87,8 +99,12 @@ def analyze_and_plot():
     plt.tight_layout()
 
     out_file = os.path.join(script_dir, "stress_strain_comparison.png")
-    plt.savefig(out_file)
-    print(f"Saved comparative plot to {out_file}")
+    if save_plot:
+        plt.savefig(out_file)
+        print(f"Saved comparative plot to {out_file}")
+    plt.close(fig)
+
+    return metrics
 
 
 if __name__ == "__main__":
