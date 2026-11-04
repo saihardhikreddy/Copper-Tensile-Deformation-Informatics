@@ -26,10 +26,11 @@ def load_stress_strain(filepath: str) -> Tuple[np.ndarray, np.ndarray]:
             parts = line.split()
             if len(parts) >= 2:
                 try:
-                    strains.append(float(parts[0]))
-                    stresses.append(float(parts[1]))
+                    strain, stress = float(parts[0]), float(parts[1])
                 except ValueError:
-                    continue
+                    continue  # parse both before appending, or the columns drift apart
+                strains.append(strain)
+                stresses.append(stress)
 
     strains = np.array(strains)
     stresses = np.array(stresses)
