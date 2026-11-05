@@ -43,7 +43,14 @@ To visualize dislocation dynamics and compute stacking fault density, load the r
 ### Automated Stress-Strain Curve Generation
 To process the raw output dumps (`stress_strain_*.txt`) and generate the comparative curve plot automatically:
 ```bash
+pip install -r requirements.txt
 python plot_stress_strain.py
+```
+
+The loader and the analysis of the bundled 300/600/900 K runs are covered by tests:
+```bash
+pip install pytest
+python -m pytest -q
 ```
 
 ---
