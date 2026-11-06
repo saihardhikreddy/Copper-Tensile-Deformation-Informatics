@@ -36,8 +36,11 @@ This repository contains a fully automated computational framework designed to s
 ### Running the MD Simulation
 To reproduce the molecular dynamics tensile loading simulation:
 ```bash
-lmp -in in.cu_tensile.txt
+lmp -in in.cu_tensile.txt -var T 300
+lmp -in in.cu_tensile.txt -var T 600
+lmp -in in.cu_tensile.txt -var T 900
 ```
+Each run writes `stress_strain_<T>K.txt` and `dump_<T>K.lammpstrj`. Without `-var T`, the script runs at 900 K.
 To visualize dislocation dynamics and compute stacking fault density, load the resulting `.lammpstrj` or dump files directly into OVITO and apply the **Dislocation Analysis (DXA)** modifier.
 
 ### Automated Stress-Strain Curve Generation

@@ -1,6 +1,9 @@
 # LAMMPS Input Script for Tensile Deformation of Copper
 # Written by: Sai Hardhik Reddy
 
+# Temperature in K. Defaults to 900; pick another with: lmp -in in.cu_tensile.txt -var T 300
+variable        T index 900
+
 # 1. INITIALIZATION
 units           metal
 dimension       3
@@ -18,9 +21,9 @@ pair_style      eam/alloy
 # NOTE: You must have a Cu EAM file in your folder for this to work!
 pair_coeff      * * Cu01.eam.alloy Cu
 
-# 4. EQUILIBRATION (Relax the box at 900K)
-velocity        all create 900.0 12345 dist gaussian
-fix             1 all npt temp 900.0 900.0 0.1 iso 0.0 0.0 1.0
+# 4. EQUILIBRATION (Relax the box at ${T} K)
+velocity        all create ${T} 12345 dist gaussian
+fix             1 all npt temp ${T} ${T} 0.1 iso 0.0 0.0 1.0
 thermo          1000
 run             5000
 unfix           1
@@ -35,8 +38,8 @@ variable        strain equal "(lz - v_L0)/v_L0"
 variable        stress_GPa equal "-pzz/10000"
 
 # 6. DEFORMATION PROCESS
-# Keep X and Y pressure at 0, hold Temp at 900K
-fix             1 all npt temp 900.0 900.0 0.1 x 0.0 0.0 1.0 y 0.0 0.0 1.0
+# Keep X and Y pressure at 0, hold the temperature at ${T} K
+fix             1 all npt temp ${T} ${T} 0.1 x 0.0 0.0 1.0 y 0.0 0.0 1.0
 # Stretch the box in Z direction at a constant rate
 fix             2 all deform 1 z erate 0.01 units box remap x
 
@@ -45,13 +48,13 @@ fix             2 all deform 1 z erate 0.01 units box remap x
 compute         atom_stress all stress/atom NULL
 
 # Output 1: Dump file for OVITO (Now includes Z-direction atomic stress!)
-dump            1 all custom 500 dump_900K.lammpstrj id type x y z c_atom_stress[3]
+dump            1 all custom 500 dump_${T}K.lammpstrj id type x y z c_atom_stress[3]
 
 # Output 2: Text file for the Stress-Strain Curve (Excel/Python)
-fix             def_print all print 100 "${strain} ${stress_GPa}" file stress_strain_900K.txt screen no
+fix             def_print all print 100 "${strain} ${stress_GPa}" file stress_strain_${T}K.txt screen no
 
 # 8. RUN THE STRETCHING
 thermo          500
 run             25000
 
-print "SIMULATION COMPLETE! Check your folder for dump_900K.lammpstrj and stress_strain_900K.txt"
+print "SIMULATION COMPLETE! Check your folder for dump_${T}K.lammpstrj and stress_strain_${T}K.txt"
