@@ -2,8 +2,11 @@
 Multi-Scale Materials Informatics: Automated Stress-Strain Analysis & Plotting
 
 Reads LAMMPS tensile deformation text dumps across temperature series (300K, 600K, 900K),
-extracts engineering metrics (Ultimate Tensile Strength, Young's Modulus, Failure Strain),
-and generates publication-quality comparative plots.
+extracts engineering metrics (Ultimate Tensile Strength and the strain it occurs at, Young's
+Modulus), and generates publication-quality comparative plots.
+
+    python plot_stress_strain.py              # print the summary and save the plot
+    python plot_stress_strain.py --markdown   # also print the metrics as a Markdown table
 """
 
 import os
@@ -108,5 +111,19 @@ def analyze_and_plot(save_plot: bool = True) -> Dict[str, Any]:
     return metrics
 
 
+def metrics_table(metrics: Dict[str, Any]) -> str:
+    """The metrics as a Markdown table, so a README can quote exactly what the data gives."""
+    rows = ["| Temperature | Young's Modulus E (GPa) | UTS (GPa) | Strain at UTS |", "| :--- | :--- | :--- | :--- |"]
+    for temp, m in metrics.items():
+        e = "n/a" if m["youngs_modulus"] is None else f"{m['youngs_modulus']:.2f}"
+        rows.append(f"| {temp} | {e} | {m['uts']:.2f} | {m['uts_strain']:.3f} |")
+    return "\n".join(rows)
+
+
 if __name__ == "__main__":
-    analyze_and_plot()
+    import sys
+
+    results = analyze_and_plot()
+    if "--markdown" in sys.argv[1:]:
+        print()
+        print(metrics_table(results))

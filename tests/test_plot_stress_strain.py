@@ -46,3 +46,13 @@ def test_analysis_of_bundled_runs():
     moduli = [metrics[t]["youngs_modulus"] for t in ("300K", "600K", "900K")]
     assert moduli == sorted(moduli, reverse=True)
     assert metrics["300K"]["uts"] == pytest.approx(9.46, abs=0.01)
+
+
+def test_metrics_table_lists_each_temperature():
+    from plot_stress_strain import metrics_table
+
+    table = metrics_table({"300K": {"uts": 9.456, "uts_strain": 0.121, "youngs_modulus": 74.97},
+                           "900K": {"uts": 6.371, "uts_strain": 0.228, "youngs_modulus": None}})
+    lines = table.splitlines()
+    assert lines[2] == "| 300K | 74.97 | 9.46 | 0.121 |"
+    assert lines[3] == "| 900K | n/a | 6.37 | 0.228 |"
