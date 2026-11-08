@@ -56,3 +56,16 @@ def test_metrics_table_lists_each_temperature():
     lines = table.splitlines()
     assert lines[2] == "| 300K | 74.97 | 9.46 | 0.121 |"
     assert lines[3] == "| 900K | n/a | 6.37 | 0.228 |"
+
+
+def test_extra_temperature_runs_are_picked_up(tmp_path):
+    from plot_stress_strain import find_datasets
+
+    curve = "".join(f"{i * 0.005} {i * 0.5}\n" for i in range(12))
+    for name in ("stress_strain_900K.txt", "stress_strain_450K.txt", "stress_strain_77K.txt",
+                 "stress_strain_notes.txt"):
+        (tmp_path / name).write_text(curve)
+    assert [d["temp"] for d in find_datasets(str(tmp_path))] == ["77K", "450K", "900K"]
+    metrics = analyze_and_plot(save_plot=False, data_dir=str(tmp_path))
+    assert list(metrics) == ["77K", "450K", "900K"]
+    assert metrics["450K"]["uts"] == pytest.approx(5.5)

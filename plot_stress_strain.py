@@ -7,9 +7,14 @@ Modulus), and generates publication-quality comparative plots.
 
     python plot_stress_strain.py              # print the summary and save the plot
     python plot_stress_strain.py --markdown   # also print the metrics as a Markdown table
+
+Every stress_strain_<T>K.txt next to the script is included, so a new run such as
+`lmp -in in.cu_tensile.txt -var T 450` is picked up automatically.
 """
 
+import glob
 import os
+import re
 from typing import Dict, Any, Tuple
 import matplotlib
 matplotlib.use("Agg")
@@ -47,14 +52,31 @@ def load_stress_strain(filepath: str) -> Tuple[np.ndarray, np.ndarray]:
     return strains, stresses
 
 
-def analyze_and_plot(save_plot: bool = True) -> Dict[str, Any]:
+COLORS = ["#1f77b4", "#ff7f0e", "#d62728", "#2ca02c", "#9467bd", "#8c564b", "#e377c2", "#17becf"]
+
+
+def find_datasets(data_dir: str) -> list:
+    """Every stress_strain_<T>K.txt in data_dir, coolest first.
+
+    The LAMMPS script names its output after the temperature (-var T 450 writes
+    stress_strain_450K.txt), so any extra run shows up here without editing the code.
+    """
+    found = []
+    for path in glob.glob(os.path.join(data_dir, "stress_strain_*K.txt")):
+        match = re.fullmatch(r"stress_strain_(\d+(?:\.\d+)?)K\.txt", os.path.basename(path))
+        if match:
+            found.append((float(match.group(1)), match.group(1) + "K", os.path.basename(path)))
+    found.sort()
+    return [{"temp": temp, "file": name, "color": COLORS[i % len(COLORS)]}
+            for i, (_, temp, name) in enumerate(found)]
+
+
+def analyze_and_plot(save_plot: bool = True, data_dir: str = None) -> Dict[str, Any]:
     """Run tensile analysis across thermal sweep and optionally save comparison figure."""
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    datasets = [
-        {"temp": "300K", "file": "stress_strain_300K.txt", "color": "#1f77b4"},
-        {"temp": "600K", "file": "stress_strain_600K.txt", "color": "#ff7f0e"},
-        {"temp": "900K", "file": "stress_strain_900K.txt", "color": "#d62728"},
-    ]
+    script_dir = data_dir or os.path.dirname(os.path.abspath(__file__))
+    datasets = find_datasets(script_dir)
+    if not datasets:
+        print(f"No stress_strain_<T>K.txt files found in {script_dir}.")
 
     metrics: Dict[str, Any] = {}
     fig = plt.figure(figsize=(10, 6), dpi=300)

@@ -49,6 +49,7 @@ To process the raw output dumps (`stress_strain_*.txt`) and generate the compara
 pip install -r requirements.txt
 python plot_stress_strain.py
 ```
+Every `stress_strain_<T>K.txt` in the folder is plotted, coolest first, so an extra run (e.g. `-var T 450`) appears on the chart without editing the script.
 
 The loader and the analysis of the bundled 300/600/900 K runs are covered by tests:
 ```bash
