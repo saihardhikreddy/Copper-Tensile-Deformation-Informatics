@@ -51,11 +51,11 @@ def test_analysis_of_bundled_runs():
 def test_metrics_table_lists_each_temperature():
     from plot_stress_strain import metrics_table
 
-    table = metrics_table({"300K": {"uts": 9.456, "uts_strain": 0.121, "youngs_modulus": 74.97},
-                           "900K": {"uts": 6.371, "uts_strain": 0.228, "youngs_modulus": None}})
+    table = metrics_table({"300K": {"uts": 9.456, "uts_strain": 0.121, "youngs_modulus": 74.97, "toughness": 0.7994},
+                           "900K": {"uts": 6.371, "uts_strain": 0.228, "youngs_modulus": None, "toughness": 0.8044}})
     lines = table.splitlines()
-    assert lines[2] == "| 300K | 74.97 | 9.46 | 0.121 |"
-    assert lines[3] == "| 900K | n/a | 6.37 | 0.228 |"
+    assert lines[2] == "| 300K | 74.97 | 9.46 | 0.121 | 0.799 |"
+    assert lines[3] == "| 900K | n/a | 6.37 | 0.228 | 0.804 |"
 
 
 def test_extra_temperature_runs_are_picked_up(tmp_path):
@@ -69,3 +69,17 @@ def test_extra_temperature_runs_are_picked_up(tmp_path):
     metrics = analyze_and_plot(save_plot=False, data_dir=str(tmp_path))
     assert list(metrics) == ["77K", "450K", "900K"]
     assert metrics["450K"]["uts"] == pytest.approx(5.5)
+
+
+def test_toughness_is_the_area_under_the_curve():
+    from plot_stress_strain import metrics_table, toughness
+
+    # A triangle: up to 10 GPa at 0.1 strain and back to 0 at 0.2 -> area 1.0 GJ/m^3.
+    strain = np.array([0.0, 0.1, 0.2])
+    stress = np.array([0.0, 10.0, 0.0])
+    assert toughness(strain, stress) == pytest.approx(1.0)
+    assert toughness(strain[:1], stress[:1]) == 0.0
+    metrics = analyze_and_plot(save_plot=False)
+    # The bundled 300 K run: 0.80 GJ/m^3 over its 0.25 strain.
+    assert metrics["300K"]["toughness"] == pytest.approx(0.799, abs=0.001)
+    assert "Toughness" in metrics_table(metrics)

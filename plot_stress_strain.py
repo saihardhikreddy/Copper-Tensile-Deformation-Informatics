@@ -3,7 +3,7 @@ Multi-Scale Materials Informatics: Automated Stress-Strain Analysis & Plotting
 
 Reads LAMMPS tensile deformation text dumps across temperature series (300K, 600K, 900K),
 extracts engineering metrics (Ultimate Tensile Strength and the strain it occurs at, Young's
-Modulus), and generates publication-quality comparative plots.
+Modulus, toughness as the area under the curve), and generates publication-quality comparative plots.
 
     python plot_stress_strain.py              # print the summary and save the plot
     python plot_stress_strain.py --markdown   # also print the metrics as a Markdown table
@@ -53,6 +53,17 @@ def load_stress_strain(filepath: str) -> Tuple[np.ndarray, np.ndarray]:
 
 
 COLORS = ["#1f77b4", "#ff7f0e", "#d62728", "#2ca02c", "#9467bd", "#8c564b", "#e377c2", "#17becf"]
+
+
+def toughness(strain: np.ndarray, stress: np.ndarray) -> float:
+    """Energy absorbed per unit volume: the area under the stress-strain curve (trapezoid rule).
+
+    Stress in GPa times dimensionless strain gives GPa, which is the same as GJ/m^3. It covers the
+    whole recorded run (0.25 strain for the bundled ones), so compare runs stretched equally far.
+    """
+    if len(strain) < 2:
+        return 0.0
+    return float(np.sum((stress[1:] + stress[:-1]) * np.diff(strain)) / 2.0)
 
 
 def find_datasets(data_dir: str) -> list:
@@ -112,6 +123,7 @@ def analyze_and_plot(save_plot: bool = True, data_dir: str = None) -> Dict[str, 
             "uts": uts,
             "uts_strain": uts_strain,
             "youngs_modulus": slope,
+            "toughness": toughness(strain, stress),
         }
 
         plt.plot(strain, stress, label=label_text, color=item["color"], linewidth=2)
@@ -135,10 +147,11 @@ def analyze_and_plot(save_plot: bool = True, data_dir: str = None) -> Dict[str, 
 
 def metrics_table(metrics: Dict[str, Any]) -> str:
     """The metrics as a Markdown table, so a README can quote exactly what the data gives."""
-    rows = ["| Temperature | Young's Modulus E (GPa) | UTS (GPa) | Strain at UTS |", "| :--- | :--- | :--- | :--- |"]
+    rows = ["| Temperature | Young's Modulus E (GPa) | UTS (GPa) | Strain at UTS | Toughness (GJ/m³) |",
+            "| :--- | :--- | :--- | :--- | :--- |"]
     for temp, m in metrics.items():
         e = "n/a" if m["youngs_modulus"] is None else f"{m['youngs_modulus']:.2f}"
-        rows.append(f"| {temp} | {e} | {m['uts']:.2f} | {m['uts_strain']:.3f} |")
+        rows.append(f"| {temp} | {e} | {m['uts']:.2f} | {m['uts_strain']:.3f} | {m['toughness']:.3f} |")
     return "\n".join(rows)
 
 
