@@ -51,6 +51,8 @@ python plot_stress_strain.py
 ```
 Every `stress_strain_<T>K.txt` in the folder is plotted, coolest first, so an extra run (e.g. `-var T 450`) appears on the chart without editing the script.
 
+Options: `--data-dir DIR` reads the runs from another folder (the plot is written there too), `--no-plot` prints the metrics without writing the PNG, and `--markdown` also prints them as a table you can paste into this README.
+
 The loader and the analysis of the bundled 300/600/900 K runs are covered by tests:
 ```bash
 pip install pytest

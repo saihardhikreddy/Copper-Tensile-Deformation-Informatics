@@ -155,10 +155,25 @@ def metrics_table(metrics: Dict[str, Any]) -> str:
     return "\n".join(rows)
 
 
-if __name__ == "__main__":
-    import sys
+def main(argv=None) -> Dict[str, Any]:
+    """Command line: python plot_stress_strain.py [--data-dir DIR] [--no-plot] [--markdown]."""
+    import argparse
 
-    results = analyze_and_plot()
-    if "--markdown" in sys.argv[1:]:
+    parser = argparse.ArgumentParser(description="Analyze and plot LAMMPS stress-strain runs.")
+    parser.add_argument("--data-dir", help="folder with the stress_strain_<T>K.txt files "
+                                           "(default: this script's folder)")
+    parser.add_argument("--no-plot", action="store_true", help="print the metrics only, don't write the PNG")
+    parser.add_argument("--markdown", action="store_true", help="also print the metrics as a Markdown table")
+    args = parser.parse_args(argv)  # a mistyped flag is an error now, not silently ignored
+    if args.data_dir and not os.path.isdir(args.data_dir):
+        parser.error(f"--data-dir {args.data_dir!r} is not a folder")
+
+    results = analyze_and_plot(save_plot=not args.no_plot, data_dir=args.data_dir)
+    if args.markdown:
         print()
         print(metrics_table(results))
+    return results
+
+
+if __name__ == "__main__":
+    main()

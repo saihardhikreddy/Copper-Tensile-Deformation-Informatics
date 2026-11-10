@@ -83,3 +83,17 @@ def test_toughness_is_the_area_under_the_curve():
     # The bundled 300 K run: 0.80 GJ/m^3 over its 0.25 strain.
     assert metrics["300K"]["toughness"] == pytest.approx(0.799, abs=0.001)
     assert "Toughness" in metrics_table(metrics)
+
+
+def test_command_line(tmp_path, capsys):
+    from plot_stress_strain import main
+
+    curve = "".join(f"{i * 0.005} {i * 0.5}\n" for i in range(12))
+    (tmp_path / "stress_strain_450K.txt").write_text(curve)
+    metrics = main(["--data-dir", str(tmp_path), "--no-plot", "--markdown"])
+    assert list(metrics) == ["450K"]
+    assert not (tmp_path / "stress_strain_comparison.png").exists()
+    assert "| 450K |" in capsys.readouterr().out
+    for argv in (["--markdwon"], ["--data-dir", str(tmp_path / "missing")]):
+        with pytest.raises(SystemExit):
+            main(argv)
