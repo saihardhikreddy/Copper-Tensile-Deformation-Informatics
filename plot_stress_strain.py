@@ -37,6 +37,10 @@ def load_stress_strain(filepath: str) -> Tuple[np.ndarray, np.ndarray]:
                     strain, stress = float(parts[0]), float(parts[1])
                 except ValueError:
                     continue  # parse both before appending, or the columns drift apart
+                if not (np.isfinite(strain) and np.isfinite(stress)):
+                    # LAMMPS prints "nan"/"-nan" once a run blows up; float() accepts them, and a
+                    # single NaN made argmax report it as the UTS and turned E and toughness to NaN.
+                    continue
                 strains.append(strain)
                 stresses.append(stress)
 

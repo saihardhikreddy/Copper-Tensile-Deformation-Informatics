@@ -97,3 +97,21 @@ def test_command_line(tmp_path, capsys):
     for argv in (["--markdwon"], ["--data-dir", str(tmp_path / "missing")]):
         with pytest.raises(SystemExit):
             main(argv)
+
+
+def test_nan_rows_from_a_blown_up_run_are_dropped(tmp_path):
+    # LAMMPS prints nan/-nan/inf once a run goes unstable; float() parses them all.
+    path = write(tmp_path, "0.00 0.0\n0.01 1.0\n0.02 nan\n0.03 -nan\n0.04 inf\nnan 2.0\n0.05 1.5\n")
+    strain, stress = load_stress_strain(path)
+    np.testing.assert_allclose(strain, [0.0, 0.01, 0.05])
+    np.testing.assert_allclose(stress, [0.0, 1.0, 1.5])
+
+
+def test_metrics_stay_finite_with_nan_rows(tmp_path):
+    rows = [f"{e:.3f} {100 * e:.4f}" for e in np.arange(0, 0.06, 0.001)]
+    rows.insert(20, "0.0195 nan")
+    (tmp_path / "stress_strain_300K.txt").write_text("\n".join(rows) + "\n")
+    m = analyze_and_plot(save_plot=False, data_dir=str(tmp_path))["300K"]
+    assert m["uts"] == pytest.approx(5.9)
+    assert m["youngs_modulus"] == pytest.approx(100.0)
+    assert np.isfinite(m["toughness"])
