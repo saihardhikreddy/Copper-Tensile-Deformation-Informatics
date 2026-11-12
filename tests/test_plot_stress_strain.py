@@ -115,3 +115,12 @@ def test_metrics_stay_finite_with_nan_rows(tmp_path):
     assert m["uts"] == pytest.approx(5.9)
     assert m["youngs_modulus"] == pytest.approx(100.0)
     assert np.isfinite(m["toughness"])
+
+
+def test_no_runs_leaves_the_existing_plot_alone(tmp_path, capsys):
+    plot = tmp_path / "stress_strain_comparison.png"
+    plot.write_bytes(b"previous plot")
+    (tmp_path / "stress_strain_300K.txt").write_text("# header only\n")
+    assert analyze_and_plot(save_plot=True, data_dir=str(tmp_path)) == {}
+    assert plot.read_bytes() == b"previous plot"
+    assert "not written" in capsys.readouterr().out

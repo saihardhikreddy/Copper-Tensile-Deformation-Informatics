@@ -133,6 +133,14 @@ def analyze_and_plot(save_plot: bool = True, data_dir: str = None) -> Dict[str, 
         plt.plot(strain, stress, label=label_text, color=item["color"], linewidth=2)
         plt.scatter([uts_strain], [uts], color=item["color"], s=60, zorder=5)
 
+    if not metrics:
+        # Nothing loaded (no files, or only empty ones): an empty, unlabelled plot written over
+        # the last good stress_strain_comparison.png helps nobody, so keep the old one.
+        plt.close(fig)
+        if save_plot:
+            print("No usable runs, so the comparison plot was not written.")
+        return metrics
+
     plt.title("FCC Copper Uniaxial Tensile Deformation: Thermal Gradient Effect", fontsize=14, fontweight="bold")
     plt.xlabel("Engineering Strain (z-axis)", fontsize=12)
     plt.ylabel("True Stress (GPa)", fontsize=12)
