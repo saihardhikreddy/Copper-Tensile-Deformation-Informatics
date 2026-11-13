@@ -124,3 +124,26 @@ def test_no_runs_leaves_the_existing_plot_alone(tmp_path, capsys):
     assert analyze_and_plot(save_plot=True, data_dir=str(tmp_path)) == {}
     assert plot.read_bytes() == b"previous plot"
     assert "not written" in capsys.readouterr().out
+
+
+def test_strain_rebuild_matches_the_input_script():
+    """The rebuilt strain axis assumes the deformation rate, timestep and print interval of
+    in.cu_tensile.txt; if the script changes, the bundled curves would be stretched wrongly."""
+    import re
+    import plot_stress_strain as pss
+
+    script = (Path(__file__).resolve().parent.parent / "in.cu_tensile.txt").read_text()
+    lines = [ln.split("#")[0] for ln in script.splitlines()]
+    text = "\n".join(lines)
+    assert re.search(r"^units\s+metal\b", text, re.M)
+    assert not re.search(r"^timestep\b", text, re.M)          # metal units' default: 0.001 ps
+    assert pss.TIMESTEP_PS == 1e-3
+    erate = re.search(r"fix\s+\S+\s+all\s+deform\s+\d+\s+z\s+erate\s+(\S+)", text)
+    assert erate and float(erate.group(1)) == pss.ERATE_PER_PS
+    every = re.search(r"fix\s+def_print\s+all\s+print\s+(\d+)", text)
+    assert every and int(every.group(1)) == pss.PRINT_EVERY
+    # 25000 steps at that rate end at 0.25 strain, as the bundled runs (251 rows) do.
+    run = [int(n) for n in re.findall(r"^run\s+(\d+)", text, re.M)][-1]
+    assert abs(run * pss.TIMESTEP_PS * pss.ERATE_PER_PS - 0.25) < 1e-12
+    strain, _ = load_stress_strain(str(Path(pss.__file__).with_name("stress_strain_300K.txt")))
+    assert abs(strain[-1] - 0.25) < 1e-9

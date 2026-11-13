@@ -22,6 +22,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+# How in.cu_tensile.txt stretches the box, used to rebuild the strain axis below. They must
+# match the input script (tests/test_plot_stress_strain.py checks this): metal units default to
+# a 1 fs timestep, "fix deform ... erate 0.01" is 0.01 per ps, and fix print writes every 100 steps.
+ERATE_PER_PS = 0.01
+TIMESTEP_PS = 1e-3
+PRINT_EVERY = 100
+
+
 def load_stress_strain(filepath: str) -> Tuple[np.ndarray, np.ndarray]:
     """Load strain and stress (GPa) from LAMMPS print output."""
     strains = []
@@ -49,9 +57,10 @@ def load_stress_strain(filepath: str) -> Tuple[np.ndarray, np.ndarray]:
 
     # If strain column was logged with dynamic L0 variable (near-zero artifacts),
     # reconstruct the true physical engineering strain from the constant deformation rate:
-    # erate = 0.01 / ps, timestep = 1 fs = 1e-3 ps, print interval = 100 steps
+    # from the deformation rate and print interval above.
     if len(strains) > 1 and np.max(np.abs(strains)) < 1e-4:
-        strains = np.linspace(0.0, (len(stresses) - 1) * 100 * 1e-3 * 0.01, len(stresses))
+        step = PRINT_EVERY * TIMESTEP_PS * ERATE_PER_PS
+        strains = np.linspace(0.0, (len(stresses) - 1) * step, len(stresses))
 
     return strains, stresses
 
