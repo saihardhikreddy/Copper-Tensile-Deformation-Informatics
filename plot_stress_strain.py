@@ -29,6 +29,10 @@ ERATE_PER_PS = 0.01
 TIMESTEP_PS = 1e-3
 PRINT_EVERY = 100
 
+# Strain window for the Young's modulus fit: past the first 1 % (thermal noise around zero
+# stress) and before the curve bends over. --elastic-range changes it.
+ELASTIC_RANGE = (0.01, 0.04)
+
 
 def load_stress_strain(filepath: str) -> Tuple[np.ndarray, np.ndarray]:
     """Load strain and stress (GPa) from LAMMPS print output."""
@@ -79,6 +83,16 @@ def toughness(strain: np.ndarray, stress: np.ndarray) -> float:
     return float(np.sum((stress[1:] + stress[:-1]) * np.diff(strain)) / 2.0)
 
 
+def youngs_modulus(strain: np.ndarray, stress: np.ndarray, elastic_range=ELASTIC_RANGE):
+    """Slope (GPa) of a straight-line fit to the points with lo <= strain <= hi, or None
+    when the window holds fewer than 3 points."""
+    lo, hi = elastic_range
+    mask = (strain >= lo) & (strain <= hi)
+    if np.sum(mask) <= 2:
+        return None
+    return float(np.polyfit(strain[mask], stress[mask], 1)[0])
+
+
 def find_datasets(data_dir: str) -> list:
     """Every stress_strain_<T>K.txt in data_dir, coolest first.
 
@@ -95,7 +109,8 @@ def find_datasets(data_dir: str) -> list:
             for i, (_, temp, name) in enumerate(found)]
 
 
-def analyze_and_plot(save_plot: bool = True, data_dir: str = None) -> Dict[str, Any]:
+def analyze_and_plot(save_plot: bool = True, data_dir: str = None,
+                     elastic_range=ELASTIC_RANGE) -> Dict[str, Any]:
     """Run tensile analysis across thermal sweep and optionally save comparison figure."""
     script_dir = data_dir or os.path.dirname(os.path.abspath(__file__))
     datasets = find_datasets(script_dir)
@@ -121,11 +136,9 @@ def analyze_and_plot(save_plot: bool = True, data_dir: str = None) -> Dict[str, 
         uts = float(stress[max_idx])
         uts_strain = float(strain[max_idx])
 
-        # Calculate Young's Modulus (E) in the initial linear elastic regime (0.01 <= strain <= 0.04)
-        elastic_mask = (strain >= 0.01) & (strain <= 0.04)
-        slope = None
-        if np.sum(elastic_mask) > 2:
-            slope = float(np.polyfit(strain[elastic_mask], stress[elastic_mask], 1)[0])
+        # Young's Modulus (E) from the initial linear elastic regime (ELASTIC_RANGE by default)
+        slope = youngs_modulus(strain, stress, elastic_range)
+        if slope is not None:
             print(f"[{item['temp']}] UTS: {uts:.2f} GPa (at strain {uts_strain:.3f}) | Young's Modulus (E): {slope:.2f} GPa")
             label_text = f"{item['temp']} (UTS: {uts:.2f} GPa, E: {slope:.1f} GPa)"
         else:
@@ -177,7 +190,8 @@ def metrics_table(metrics: Dict[str, Any]) -> str:
 
 
 def main(argv=None) -> Dict[str, Any]:
-    """Command line: python plot_stress_strain.py [--data-dir DIR] [--no-plot] [--markdown]."""
+    """Command line: python plot_stress_strain.py [--data-dir DIR] [--no-plot] [--markdown]
+    [--elastic-range LO HI]."""
     import argparse
 
     parser = argparse.ArgumentParser(description="Analyze and plot LAMMPS stress-strain runs.")
@@ -185,11 +199,17 @@ def main(argv=None) -> Dict[str, Any]:
                                            "(default: this script's folder)")
     parser.add_argument("--no-plot", action="store_true", help="print the metrics only, don't write the PNG")
     parser.add_argument("--markdown", action="store_true", help="also print the metrics as a Markdown table")
+    parser.add_argument("--elastic-range", nargs=2, type=float, metavar=("LO", "HI"), default=ELASTIC_RANGE,
+                        help="strain window for the Young's modulus fit (default: %(default)s)")
     args = parser.parse_args(argv)  # a mistyped flag is an error now, not silently ignored
     if args.data_dir and not os.path.isdir(args.data_dir):
         parser.error(f"--data-dir {args.data_dir!r} is not a folder")
+    lo, hi = args.elastic_range
+    if not (np.isfinite(lo) and np.isfinite(hi) and 0 <= lo < hi):
+        parser.error(f"--elastic-range needs 0 <= LO < HI, got {lo} {hi}")
 
-    results = analyze_and_plot(save_plot=not args.no_plot, data_dir=args.data_dir)
+    results = analyze_and_plot(save_plot=not args.no_plot, data_dir=args.data_dir,
+                               elastic_range=(lo, hi))
     if args.markdown:
         print()
         print(metrics_table(results))

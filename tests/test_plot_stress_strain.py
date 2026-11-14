@@ -147,3 +147,29 @@ def test_strain_rebuild_matches_the_input_script():
     assert abs(run * pss.TIMESTEP_PS * pss.ERATE_PER_PS - 0.25) < 1e-12
     strain, _ = load_stress_strain(str(Path(pss.__file__).with_name("stress_strain_300K.txt")))
     assert abs(strain[-1] - 0.25) < 1e-9
+
+
+def test_youngs_modulus_fits_only_the_chosen_window():
+    from plot_stress_strain import ELASTIC_RANGE, youngs_modulus
+
+    strain = np.linspace(0, 0.1, 101)
+    stress = np.where(strain <= 0.05, 100 * strain, 5 + 20 * (strain - 0.05))  # bends at 5 %
+    assert youngs_modulus(strain, stress) == pytest.approx(100)
+    assert ELASTIC_RANGE == (0.01, 0.04)
+    assert youngs_modulus(strain, stress, (0.06, 0.1)) == pytest.approx(20)
+    assert youngs_modulus(strain, stress, (0.2, 0.3)) is None  # nothing in the window
+
+
+def test_elastic_range_option(tmp_path, capsys):
+    from plot_stress_strain import main
+
+    curve = "".join(f"{i * 0.005} {min(i, 8) * 0.5}\n" for i in range(20))  # flat after strain 0.04
+    (tmp_path / "stress_strain_300K.txt").write_text(curve)
+    default = main(["--data-dir", str(tmp_path), "--no-plot"])["300K"]["youngs_modulus"]
+    late = main(["--data-dir", str(tmp_path), "--no-plot", "--elastic-range", "0.05", "0.09"])
+    assert default == pytest.approx(100) and late["300K"]["youngs_modulus"] == pytest.approx(0, abs=1e-9)
+    capsys.readouterr()
+    for bad in (["0.04", "0.01"], ["-0.01", "0.02"], ["0.01", "nan"], ["0.01"]):
+        with pytest.raises(SystemExit):
+            main(["--data-dir", str(tmp_path), "--no-plot", "--elastic-range", *bad])
+    assert "0 <= LO < HI" in capsys.readouterr().err
