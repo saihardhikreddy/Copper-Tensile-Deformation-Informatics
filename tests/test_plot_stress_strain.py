@@ -51,11 +51,13 @@ def test_analysis_of_bundled_runs():
 def test_metrics_table_lists_each_temperature():
     from plot_stress_strain import metrics_table
 
-    table = metrics_table({"300K": {"uts": 9.456, "uts_strain": 0.121, "youngs_modulus": 74.97, "toughness": 0.7994},
-                           "900K": {"uts": 6.371, "uts_strain": 0.228, "youngs_modulus": None, "toughness": 0.8044}})
+    table = metrics_table({"300K": {"uts": 9.456, "uts_strain": 0.121, "youngs_modulus": 74.97, "toughness": 0.7994,
+                                    "failure_strain": 0.136},
+                           "900K": {"uts": 6.371, "uts_strain": 0.228, "youngs_modulus": None, "toughness": 0.8044,
+                                    "failure_strain": None}})
     lines = table.splitlines()
-    assert lines[2] == "| 300K | 74.97 | 9.46 | 0.121 | 0.799 |"
-    assert lines[3] == "| 900K | n/a | 6.37 | 0.228 | 0.804 |"
+    assert lines[2] == "| 300K | 74.97 | 9.46 | 0.121 | 0.136 | 0.799 |"
+    assert lines[3] == "| 900K | n/a | 6.37 | 0.228 | not reached | 0.804 |"
 
 
 def test_extra_temperature_runs_are_picked_up(tmp_path):
@@ -173,3 +175,21 @@ def test_elastic_range_option(tmp_path, capsys):
         with pytest.raises(SystemExit):
             main(["--data-dir", str(tmp_path), "--no-plot", "--elastic-range", *bad])
     assert "0 <= LO < HI" in capsys.readouterr().err
+
+
+def test_failure_strain_is_where_stress_falls_to_half_its_peak():
+    from plot_stress_strain import failure_strain
+
+    strain = np.linspace(0, 0.2, 21)
+    stress = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 6, 4.5, 4, 3, 2, 2, 2, 2, 2, 2, 2, 2], float)
+    assert failure_strain(strain, stress) == pytest.approx(0.11)   # 4.0 <= 0.5 x 8 at index 11
+    assert failure_strain(strain, stress, drop=0.25) == pytest.approx(0.13)
+    assert failure_strain(strain, np.arange(21.0)) is None          # still rising: not reached
+    assert failure_strain(np.array([]), np.array([])) is None
+
+
+def test_failure_strain_of_the_bundled_runs():
+    metrics = analyze_and_plot(save_plot=False)
+    assert metrics["300K"]["failure_strain"] == pytest.approx(0.136, abs=1e-6)
+    assert metrics["600K"]["failure_strain"] is None   # still above half its peak at strain 0.25
+    assert metrics["900K"]["failure_strain"] == pytest.approx(0.25, abs=1e-6)

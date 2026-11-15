@@ -93,6 +93,19 @@ def youngs_modulus(strain: np.ndarray, stress: np.ndarray, elastic_range=ELASTIC
     return float(np.polyfit(strain[mask], stress[mask], 1)[0])
 
 
+FAILURE_DROP = 0.5  # failure = stress first falls to half its peak after the peak
+
+
+def failure_strain(strain: np.ndarray, stress: np.ndarray, drop: float = FAILURE_DROP):
+    """Strain at which the stress, after its peak, first falls to `drop` x UTS, or None if it
+    never does within the recorded run (the crystal is still carrying load at the end)."""
+    if len(stress) == 0:
+        return None
+    peak = int(np.argmax(stress))
+    below = np.nonzero(stress[peak:] <= drop * stress[peak])[0]
+    return float(strain[peak + below[0]]) if len(below) else None
+
+
 def find_datasets(data_dir: str) -> list:
     """Every stress_strain_<T>K.txt in data_dir, coolest first.
 
@@ -150,6 +163,7 @@ def analyze_and_plot(save_plot: bool = True, data_dir: str = None,
             "uts_strain": uts_strain,
             "youngs_modulus": slope,
             "toughness": toughness(strain, stress),
+            "failure_strain": failure_strain(strain, stress),
         }
 
         plt.plot(strain, stress, label=label_text, color=item["color"], linewidth=2)
@@ -181,11 +195,13 @@ def analyze_and_plot(save_plot: bool = True, data_dir: str = None,
 
 def metrics_table(metrics: Dict[str, Any]) -> str:
     """The metrics as a Markdown table, so a README can quote exactly what the data gives."""
-    rows = ["| Temperature | Young's Modulus E (GPa) | UTS (GPa) | Strain at UTS | Toughness (GJ/m³) |",
-            "| :--- | :--- | :--- | :--- | :--- |"]
+    rows = ["| Temperature | Young's Modulus E (GPa) | UTS (GPa) | Strain at UTS | Failure strain | Toughness (GJ/m³) |",
+            "| :--- | :--- | :--- | :--- | :--- | :--- |"]
     for temp, m in metrics.items():
         e = "n/a" if m["youngs_modulus"] is None else f"{m['youngs_modulus']:.2f}"
-        rows.append(f"| {temp} | {e} | {m['uts']:.2f} | {m['uts_strain']:.3f} | {m['toughness']:.3f} |")
+        fail = m.get("failure_strain")
+        fail = "not reached" if fail is None else f"{fail:.3f}"
+        rows.append(f"| {temp} | {e} | {m['uts']:.2f} | {m['uts_strain']:.3f} | {fail} | {m['toughness']:.3f} |")
     return "\n".join(rows)
 
 
