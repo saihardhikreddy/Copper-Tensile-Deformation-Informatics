@@ -193,3 +193,22 @@ def test_failure_strain_of_the_bundled_runs():
     assert metrics["300K"]["failure_strain"] == pytest.approx(0.136, abs=1e-6)
     assert metrics["600K"]["failure_strain"] is None   # still above half its peak at strain 0.25
     assert metrics["900K"]["failure_strain"] == pytest.approx(0.25, abs=1e-6)
+
+
+def test_failure_drop_option(capsys):
+    from plot_stress_strain import main
+
+    default = main(["--no-plot"])
+    stricter = main(["--no-plot", "--failure-drop", "0.8"])
+    assert default["300K"]["failure_strain"] == pytest.approx(0.136, abs=1e-6)
+    # Falling to 80 % of the peak happens sooner than falling to 50 %.
+    assert stricter["300K"]["failure_strain"] < default["300K"]["failure_strain"]
+    assert stricter["300K"]["failure_strain"] == pytest.approx(0.130, abs=1e-6)
+    # 600 K never falls to half its peak in the recorded run, but it does fall to 80 %.
+    assert default["600K"]["failure_strain"] is None
+    assert stricter["600K"]["failure_strain"] == pytest.approx(0.248, abs=1e-6)
+    capsys.readouterr()
+    for bad in ("0", "1", "1.5", "-0.2", "nan"):
+        with pytest.raises(SystemExit):
+            main(["--no-plot", "--failure-drop", bad])
+    assert "between 0 and 1" in capsys.readouterr().err

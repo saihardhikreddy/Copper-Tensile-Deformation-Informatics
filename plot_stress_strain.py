@@ -123,7 +123,7 @@ def find_datasets(data_dir: str) -> list:
 
 
 def analyze_and_plot(save_plot: bool = True, data_dir: str = None,
-                     elastic_range=ELASTIC_RANGE) -> Dict[str, Any]:
+                     elastic_range=ELASTIC_RANGE, failure_drop: float = FAILURE_DROP) -> Dict[str, Any]:
     """Run tensile analysis across thermal sweep and optionally save comparison figure."""
     script_dir = data_dir or os.path.dirname(os.path.abspath(__file__))
     datasets = find_datasets(script_dir)
@@ -163,7 +163,7 @@ def analyze_and_plot(save_plot: bool = True, data_dir: str = None,
             "uts_strain": uts_strain,
             "youngs_modulus": slope,
             "toughness": toughness(strain, stress),
-            "failure_strain": failure_strain(strain, stress),
+            "failure_strain": failure_strain(strain, stress, failure_drop),
         }
 
         plt.plot(strain, stress, label=label_text, color=item["color"], linewidth=2)
@@ -207,7 +207,7 @@ def metrics_table(metrics: Dict[str, Any]) -> str:
 
 def main(argv=None) -> Dict[str, Any]:
     """Command line: python plot_stress_strain.py [--data-dir DIR] [--no-plot] [--markdown]
-    [--elastic-range LO HI]."""
+    [--elastic-range LO HI] [--failure-drop F]."""
     import argparse
 
     parser = argparse.ArgumentParser(description="Analyze and plot LAMMPS stress-strain runs.")
@@ -217,15 +217,20 @@ def main(argv=None) -> Dict[str, Any]:
     parser.add_argument("--markdown", action="store_true", help="also print the metrics as a Markdown table")
     parser.add_argument("--elastic-range", nargs=2, type=float, metavar=("LO", "HI"), default=ELASTIC_RANGE,
                         help="strain window for the Young's modulus fit (default: %(default)s)")
+    parser.add_argument("--failure-drop", type=float, default=FAILURE_DROP, metavar="F",
+                        help="failure = stress first falls to F x its peak after the peak "
+                             "(default: %(default)s)")
     args = parser.parse_args(argv)  # a mistyped flag is an error now, not silently ignored
     if args.data_dir and not os.path.isdir(args.data_dir):
         parser.error(f"--data-dir {args.data_dir!r} is not a folder")
     lo, hi = args.elastic_range
     if not (np.isfinite(lo) and np.isfinite(hi) and 0 <= lo < hi):
         parser.error(f"--elastic-range needs 0 <= LO < HI, got {lo} {hi}")
+    if not 0 < args.failure_drop < 1:   # also refuses nan
+        parser.error(f"--failure-drop needs a fraction between 0 and 1, got {args.failure_drop}")
 
     results = analyze_and_plot(save_plot=not args.no_plot, data_dir=args.data_dir,
-                               elastic_range=(lo, hi))
+                               elastic_range=(lo, hi), failure_drop=args.failure_drop)
     if args.markdown:
         print()
         print(metrics_table(results))

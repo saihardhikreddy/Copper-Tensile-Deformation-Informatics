@@ -51,7 +51,7 @@ python plot_stress_strain.py
 ```
 Every `stress_strain_<T>K.txt` in the folder is plotted, coolest first, so an extra run (e.g. `-var T 450`) appears on the chart without editing the script.
 
-Options: `--data-dir DIR` reads the runs from another folder (the plot is written there too), `--no-plot` prints the metrics without writing the PNG, `--markdown` also prints them as a table you can paste into this README, and `--elastic-range LO HI` changes the strain window used to fit Young's modulus (default 0.01 to 0.04).
+Options: `--data-dir DIR` reads the runs from another folder (the plot is written there too), `--no-plot` prints the metrics without writing the PNG, `--markdown` also prints them as a table you can paste into this README, `--elastic-range LO HI` changes the strain window used to fit Young's modulus (default 0.01 to 0.04), and `--failure-drop F` changes what counts as failure: the strain where the stress first falls to F times its peak (default 0.5).
 
 The loader and the analysis of the bundled 300/600/900 K runs are covered by tests:
 ```bash
