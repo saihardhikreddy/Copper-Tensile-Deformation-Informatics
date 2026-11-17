@@ -3,7 +3,7 @@ Multi-Scale Materials Informatics: Automated Stress-Strain Analysis & Plotting
 
 Reads LAMMPS tensile deformation text dumps across temperature series (300K, 600K, 900K),
 extracts engineering metrics (Ultimate Tensile Strength and the strain it occurs at, Young's
-Modulus, toughness as the area under the curve), and generates publication-quality comparative plots.
+Modulus, toughness as the area under the curve, over the whole run and up to failure), and generates publication-quality comparative plots.
 
     python plot_stress_strain.py              # print the summary and save the plot
     python plot_stress_strain.py --markdown   # also print the metrics as a Markdown table
@@ -72,12 +72,16 @@ def load_stress_strain(filepath: str) -> Tuple[np.ndarray, np.ndarray]:
 COLORS = ["#1f77b4", "#ff7f0e", "#d62728", "#2ca02c", "#9467bd", "#8c564b", "#e377c2", "#17becf"]
 
 
-def toughness(strain: np.ndarray, stress: np.ndarray) -> float:
+def toughness(strain: np.ndarray, stress: np.ndarray, upto: float = None) -> float:
     """Energy absorbed per unit volume: the area under the stress-strain curve (trapezoid rule).
 
-    Stress in GPa times dimensionless strain gives GPa, which is the same as GJ/m^3. It covers the
-    whole recorded run (0.25 strain for the bundled ones), so compare runs stretched equally far.
+    Stress in GPa times dimensionless strain gives GPa, which is the same as GJ/m^3. By default it
+    covers the whole recorded run (0.25 strain for the bundled ones), so compare runs stretched
+    equally far. With `upto`, only the points with strain <= upto count (e.g. up to failure).
     """
+    if upto is not None:
+        keep = strain <= upto
+        strain, stress = strain[keep], stress[keep]
     if len(strain) < 2:
         return 0.0
     return float(np.sum((stress[1:] + stress[:-1]) * np.diff(strain)) / 2.0)
@@ -158,12 +162,17 @@ def analyze_and_plot(save_plot: bool = True, data_dir: str = None,
             print(f"[{item['temp']}] UTS: {uts:.2f} GPa (at strain {uts_strain:.3f})")
             label_text = f"{item['temp']} (UTS: {uts:.2f} GPa)"
 
+        fail = failure_strain(strain, stress, failure_drop)
         metrics[item["temp"]] = {
             "uts": uts,
             "uts_strain": uts_strain,
             "youngs_modulus": slope,
             "toughness": toughness(strain, stress),
-            "failure_strain": failure_strain(strain, stress, failure_drop),
+            "failure_strain": fail,
+            # The whole-run toughness keeps adding the broken crystal's tail after failure, so a
+            # run that failed early and kept going can look as tough as one that never failed.
+            # This one stops at failure; None when the run never failed.
+            "toughness_to_failure": None if fail is None else toughness(strain, stress, upto=fail),
         }
 
         plt.plot(strain, stress, label=label_text, color=item["color"], linewidth=2)
@@ -195,13 +204,17 @@ def analyze_and_plot(save_plot: bool = True, data_dir: str = None,
 
 def metrics_table(metrics: Dict[str, Any]) -> str:
     """The metrics as a Markdown table, so a README can quote exactly what the data gives."""
-    rows = ["| Temperature | Young's Modulus E (GPa) | UTS (GPa) | Strain at UTS | Failure strain | Toughness (GJ/m³) |",
-            "| :--- | :--- | :--- | :--- | :--- | :--- |"]
+    rows = ["| Temperature | Young's Modulus E (GPa) | UTS (GPa) | Strain at UTS | Failure strain | Toughness (GJ/m³) "
+            "| Toughness to failure (GJ/m³) |",
+            "| :--- | :--- | :--- | :--- | :--- | :--- | :--- |"]
     for temp, m in metrics.items():
         e = "n/a" if m["youngs_modulus"] is None else f"{m['youngs_modulus']:.2f}"
         fail = m.get("failure_strain")
         fail = "not reached" if fail is None else f"{fail:.3f}"
-        rows.append(f"| {temp} | {e} | {m['uts']:.2f} | {m['uts_strain']:.3f} | {fail} | {m['toughness']:.3f} |")
+        to_fail = m.get("toughness_to_failure")
+        to_fail = "not reached" if to_fail is None else f"{to_fail:.3f}"
+        rows.append(f"| {temp} | {e} | {m['uts']:.2f} | {m['uts_strain']:.3f} | {fail} | {m['toughness']:.3f} "
+                    f"| {to_fail} |")
     return "\n".join(rows)
 
 

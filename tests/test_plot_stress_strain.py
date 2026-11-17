@@ -56,8 +56,8 @@ def test_metrics_table_lists_each_temperature():
                            "900K": {"uts": 6.371, "uts_strain": 0.228, "youngs_modulus": None, "toughness": 0.8044,
                                     "failure_strain": None}})
     lines = table.splitlines()
-    assert lines[2] == "| 300K | 74.97 | 9.46 | 0.121 | 0.136 | 0.799 |"
-    assert lines[3] == "| 900K | n/a | 6.37 | 0.228 | not reached | 0.804 |"
+    assert lines[2] == "| 300K | 74.97 | 9.46 | 0.121 | 0.136 | 0.799 | not reached |"
+    assert lines[3] == "| 900K | n/a | 6.37 | 0.228 | not reached | 0.804 | not reached |"
 
 
 def test_extra_temperature_runs_are_picked_up(tmp_path):
@@ -85,6 +85,18 @@ def test_toughness_is_the_area_under_the_curve():
     # The bundled 300 K run: 0.80 GJ/m^3 over its 0.25 strain.
     assert metrics["300K"]["toughness"] == pytest.approx(0.799, abs=0.001)
     assert "Toughness" in metrics_table(metrics)
+
+
+def test_toughness_to_failure_stops_at_failure():
+    from plot_stress_strain import toughness
+
+    strain = np.array([0.0, 0.1, 0.2])
+    stress = np.array([0.0, 10.0, 0.0])
+    assert toughness(strain, stress, upto=0.1) == pytest.approx(0.5)  # the rising half only
+    metrics = analyze_and_plot(save_plot=False)
+    m300, m600 = metrics["300K"], metrics["600K"]
+    assert m300["toughness_to_failure"] < m300["toughness"]  # the tail after 0.136 is left out
+    assert m600["failure_strain"] is None and m600["toughness_to_failure"] is None
 
 
 def test_command_line(tmp_path, capsys):
