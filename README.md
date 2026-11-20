@@ -42,6 +42,7 @@ lmp -in in.cu_tensile.txt -var T 900
 ```
 Each run writes `stress_strain_<T>K.txt` and `dump_<T>K.lammpstrj`. Without `-var T`, the script runs at 900 K.
 To visualize dislocation dynamics and compute stacking fault density, load the resulting `.lammpstrj` or dump files directly into OVITO and apply the **Dislocation Analysis (DXA)** modifier.
+For the stress map, colour by `v_szz_GPa`: the per-atom z stress in GPa (positive in tension), on the same scale as the stress-strain curve. The raw `c_atom_stress[3]` column is stress times volume (bar·Å³), so its numbers are not a stress.
 
 ### Automated Stress-Strain Curve Generation
 To process the raw output dumps (`stress_strain_*.txt`) and generate the comparative curve plot automatically:

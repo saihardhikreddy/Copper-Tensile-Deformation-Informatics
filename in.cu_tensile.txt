@@ -44,11 +44,14 @@ fix             1 all npt temp ${T} ${T} 0.1 x 0.0 0.0 1.0 y 0.0 0.0 1.0
 fix             2 all deform 1 z erate 0.01 units box remap x
 
 # 7. DATA OUTPUTS (For OVITO and Graphing)
-# Compute the stress on every single atom
+# Per-atom stress. stress/atom gives stress x volume (bar*A^3), not a stress, so a colour scale
+# on c_atom_stress[3] has no unit anyone can compare with the curve. v_szz_GPa divides by the
+# mean volume per atom: GPa, positive in tension, and its mean over all atoms is stress_GPa.
 compute         atom_stress all stress/atom NULL
+variable        szz_GPa atom c_atom_stress[3]/(vol/atoms)/10000
 
-# Output 1: Dump file for OVITO (Now includes Z-direction atomic stress!)
-dump            1 all custom 500 dump_${T}K.lammpstrj id type x y z c_atom_stress[3]
+# Output 1: Dump file for OVITO (Z-direction atomic stress, raw and in GPa)
+dump            1 all custom 500 dump_${T}K.lammpstrj id type x y z c_atom_stress[3] v_szz_GPa
 
 # Output 2: Text file for the Stress-Strain Curve (Excel/Python)
 fix             def_print all print 100 "${strain} ${stress_GPa}" file stress_strain_${T}K.txt screen no
